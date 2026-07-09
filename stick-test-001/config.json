@@ -1,0 +1,17 @@
+{
+  "id": "stick-test-001",
+  "name": "Stick test",
+  "version": "1.0",
+  "publishedAt": "2026-07-09T21:12:15.333Z",
+  "model": {
+    "file": "Stick.obj",
+    "pivotMode": "centered",
+    "bb": null
+  },
+  "material": null,
+  "lighting": null,
+  "background": {
+    "mode": "solid",
+    "solidColor": "#0e0e14"
+  }
+}

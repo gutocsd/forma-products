@@ -1,0 +1,71 @@
+{
+  "id": "lua-001",
+  "name": "Lua",
+  "version": "1.0",
+  "publishedAt": "2026-07-13T20:34:35.728Z",
+  "model": {
+    "file": "Stick.obj",
+    "pivotMode": "centered",
+    "bb": {
+      "center": {
+        "x": 0.003935155633360774,
+        "y": -1.0047324347110151,
+        "z": 0.1493157204199354
+      },
+      "size": {
+        "x": 0.020687377806400363,
+        "y": 2.0000000000000004,
+        "z": 0.32185048558720974
+      },
+      "radius": 1.0129185187705412,
+      "minY": -2.0047324347110154,
+      "raw": {
+        "w": "0.040",
+        "h": "3.892",
+        "d": "0.626"
+      }
+    }
+  },
+  "material": {
+    "mode": "simple",
+    "albedoColor": "#2a4a7a",
+    "useTexture": true,
+    "albedoTextureUrl": null,
+    "glossiness": 0.87,
+    "reflection": 0.41,
+    "envMapIntensity": 1,
+    "mixFactor": 0.5,
+    "matA": {
+      "albedoColor": "#1a3a6a",
+      "glossiness": 0.8,
+      "reflection": 0.5,
+      "textureUrl": null
+    },
+    "matB": {
+      "albedoColor": "#6a1a1a",
+      "glossiness": 0.2,
+      "reflection": 0.1,
+      "textureUrl": null
+    },
+    "maskTextureUrl": null
+  },
+  "lighting": {
+    "mode": "hdri",
+    "hdriUrl": null,
+    "hdriFileName": "blocky_photo_studio_2k.exr",
+    "hdriIntensity": 1.15,
+    "intensity": 4.6,
+    "azimuth": 250,
+    "elevation": 20,
+    "shadowOpacity": 0.2,
+    "hdriPreset": -1
+  },
+  "background": {
+    "mode": "gradient",
+    "solidColor": "#505077",
+    "gradientPreset": -1,
+    "gradientStart": "#a3a3a3",
+    "gradientEnd": "#ffffff",
+    "gradientAngle": 292
+  }
+}

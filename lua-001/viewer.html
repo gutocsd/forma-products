@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>FORMA Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#0d0d11;font-family:'Inter',system-ui,sans-serif;touch-action:none}
+canvas{display:block;position:absolute;inset:0;width:100%!important;height:100%!important;touch-action:none}
+.bg{position:absolute;inset:0;z-index:0}
+#ld{position:absolute;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#0d0d11;transition:opacity .5s}
+#ld.out{opacity:0;pointer-events:none}
+.ring{width:40px;height:40px;border:3px solid rgba(255,255,255,.08);border-top-color:#9b8cff;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ltxt{font-size:13px;color:rgba(255,255,255,.35);letter-spacing:.04em}
+.lerr{font-size:13px;color:#f87171;text-align:center;max-width:300px;line-height:1.8;padding:20px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:12px}
+/* Brand */
+.topbar{position:absolute;top:0;left:0;right:0;height:52px;display:flex;align-items:center;padding:0 18px;background:linear-gradient(to bottom,rgba(0,0,0,.55),transparent);z-index:10;pointer-events:none}
+.brand-mark{width:22px;height:22px;background:#7c6aff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
+.brand-name{font-size:12px;font-weight:700;letter-spacing:.07em;color:rgba(255,255,255,.7);text-transform:uppercase;margin-left:8px}
+.brand-sep{font-size:12px;color:rgba(255,255,255,.25);margin-left:6px}
+.brand-product{font-size:12px;color:rgba(255,255,255,.4);margin-left:4px;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Orbit slider — bottom */
+.orbit-bar{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:0 clamp(16px,5vw,48px) clamp(20px,4vw,36px);
+  z-index:10;
+  background:linear-gradient(to top,rgba(0,0,0,.5),transparent);
+  display:flex;flex-direction:column;align-items:stretch;gap:6px;
+}
+.orbit-track{
+  position:relative;height:32px;display:flex;align-items:center;cursor:ew-resize;
+  -webkit-tap-highlight-color:transparent;touch-action:none;
+}
+.orbit-line{
+  position:absolute;left:0;right:0;height:2px;
+  background:rgba(255,255,255,.18);border-radius:2px;
+}
+.orbit-thumb{
+  position:absolute;width:20px;height:20px;border-radius:50%;
+  background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.4);
+  transform:translateX(-50%);transition:transform .05s;
+  cursor:grab;pointer-events:none;
+}
+.orbit-thumb:active{cursor:grabbing}
+.orbit-hint{
+  font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;
+  color:rgba(255,255,255,.2);text-align:center;
+}
+</style>
+</head>
+<body>
+<div class="bg" id="bg"></div>
+<canvas id="c"></canvas>
+<div id="ld"><div class="ring"></div><div class="ltxt" id="ltxt">Loading...</div></div>
+<div class="topbar">
+  <div class="brand-mark">F</div>
+  <div class="brand-name">Forma</div>
+  <div class="brand-sep">·</div>
+  <div class="brand-product" id="bprod"></div>
+</div>
+<div class="orbit-bar">
+  <div class="orbit-track" id="orbitTrack">
+    <div class="orbit-line"></div>
+    <div class="orbit-thumb" id="orbitThumb" style="left:50%"></div>
+  </div>
+  <div class="orbit-hint">← Drag to rotate · Scroll to zoom · Middle-click to pan →</div>
+</div>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three'
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js'
+
+const $ = id => document.getElementById(id)
+const ltxt = $('ltxt'), ldiv = $('ld')
+function err(m){ ldiv.innerHTML=`<div class="lerr">${m}</div>` }
+function step(m){ ltxt.textContent=m }
+
+/* ── Load config ── */
+step('Reading config...')
+let CFG
+try{
+  const r=await fetch('./config.json'); if(!r.ok) throw new Error('HTTP '+r.status)
+  CFG=await r.json()
+}catch(e){err('Cannot load config.json<br><small>'+e.message+'</small>');throw e}
+
+document.title=CFG.name+' — FORMA'
+$('bprod').textContent=CFG.name
+
+/* ── Renderer ── */
+const canvas=$('c')
+const ren=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'})
+ren.shadowMap.enabled=true; ren.shadowMap.type=THREE.PCFSoftShadowMap
+ren.toneMapping=THREE.ACESFilmicToneMapping
+ren.outputColorSpace=THREE.SRGBColorSpace
+const scene=new THREE.Scene()
+const camera=new THREE.PerspectiveCamera(45,1,0.01,2000)
+
+function resize(){
+  const w=window.innerWidth,h=window.innerHeight
+  ren.setSize(w,h); ren.setPixelRatio(Math.min(devicePixelRatio,2))
+  camera.aspect=w/h; camera.updateProjectionMatrix()
+}
+resize(); window.addEventListener('resize',resize)
+
+/* ── Background ── */
+const bg=CFG.background||{}
+;(function applyBG(){
+  if(bg.mode==='gradient'){
+    ren.setClearColor(0x000000,0)
+    $('bg').style.background=`linear-gradient(${bg.gradientAngle||135}deg,${bg.gradientStart||'#0f0c29'},${bg.gradientEnd||'#24243e'})`
+  } else {
+    ren.setClearColor(bg.solidColor||'#0e0e14',1)
+    $('bg').style.background='transparent'
+  }
+})()
+
+/* ── Lights — 3-point + hemisphere for GI ── */
+const ambLight =new THREE.AmbientLight(0xffffff,.2)
+const hemiLight=new THREE.HemisphereLight(0xffffff,0x888888,1.5)
+const keyLight =new THREE.DirectionalLight(0xfff8f0,2.5)
+const fillLight =new THREE.DirectionalLight(0xc0d4ff,.8)
+const rimLight  =new THREE.DirectionalLight(0xffffff,.35)
+keyLight.castShadow=true; keyLight.shadow.mapSize.set(2048,2048); keyLight.shadow.bias=-.0003
+const ksc=keyLight.shadow.camera; ksc.left=-6;ksc.right=6;ksc.top=6;ksc.bottom=-6;ksc.near=.1;ksc.far=60
+fillLight.position.set(-4,3,-3); rimLight.position.set(0,2,-8)
+scene.add(ambLight,hemiLight,keyLight,fillLight,rimLight)
+
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.ShadowMaterial({opacity:.15,transparent:true}))
+ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground)
+
+/* ── Default IBL environment (RoomEnvironment for reflections) ── */
+let _defEnv=null
+import('three/addons/environments/RoomEnvironment.js').then(({RoomEnvironment})=>{
+  const pmrem=new THREE.PMREMGenerator(ren); pmrem.compileEquirectangularShader()
+  _defEnv=pmrem.fromScene(new RoomEnvironment(.5)).texture
+  scene.environment=_defEnv; pmrem.dispose()
+}).catch(()=>{})
+
+function kelvin(k){
+  const t=k/100;let r,g,b
+  if(t<=66){r=255;g=Math.max(0,Math.min(255,99.47*Math.log(t)-161.12));b=t<=19?0:Math.max(0,Math.min(255,138.52*Math.log(t-10)-305.04))}
+  else{r=Math.max(0,Math.min(255,329.7*Math.pow(t-60,-.133)));g=Math.max(0,Math.min(255,288.12*Math.pow(t-60,-.0755)));b=255}
+  return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`
+}
+
+function applyLighting(l){
+  if(!l){
+    ren.toneMappingExposure=1.5
+    hemiLight.intensity=1.5; keyLight.intensity=2.5; fillLight.intensity=.8; ambLight.intensity=.2
+    keyLight.position.set(4,8,4); return
+  }
+  if(l.mode==='hdri'&&l.hdriUrl){
+    import('three/addons/loaders/RGBELoader.js').then(({RGBELoader})=>{
+      new RGBELoader().load(l.hdriUrl,tex=>{
+        const pmrem=new THREE.PMREMGenerator(ren); pmrem.compileEquirectangularShader()
+        const envMap=pmrem.fromEquirectangular(tex).texture
+        scene.environment=envMap; pmrem.dispose(); tex.dispose()
+        ren.toneMappingExposure=Math.max(.5,l.hdriIntensity??1.5)
+        hemiLight.intensity=0; keyLight.intensity=0; fillLight.intensity=0; ambLight.intensity=.05
+        scene.traverse(c=>{if(c.isMesh&&c.material&&!c.material._isMix){c.material.envMap=envMap;c.material.needsUpdate=true}})
+      },undefined,()=>{})
+    }).catch(()=>{})
+    return
+  }
+  // Procedural: single intensity controls toneMappingExposure
+  const v=l.intensity??5
+  ren.toneMappingExposure=v===0?0:Math.pow(v/5,2)*1.5+0.1
+  hemiLight.color.set(0xffffff); hemiLight.groundColor.set(0x777777); hemiLight.intensity=1.4
+  keyLight.intensity=2.0; keyLight.color.set(kelvin(l.keyTemp??5500))
+  fillLight.intensity=0.7; fillLight.color.set(0xc8d8ff)
+  rimLight.intensity=0.3; ambLight.intensity=0.15
+  const az=(l.azimuth??45)*Math.PI/180, el=(l.elevation??35)*Math.PI/180, d=8
+  keyLight.position.set(d*Math.sin(az)*Math.cos(el),d*Math.sin(el),d*Math.cos(az)*Math.cos(el))
+  if(ground?.material) ground.material.opacity=l.shadowOpacity??0.15
+}
+applyLighting(CFG.lighting)
+
+/* ── Load model ── */
+step('Loading model...')
+const modelFile=CFG.model?.file||'model.obj'
+let modelBlob
+try{
+  const r=await fetch('./'+modelFile); if(!r.ok) throw new Error('HTTP '+r.status)
+  modelBlob=await r.blob()
+}catch(e){err('Cannot load model<br><small>'+e.message+'</small>');throw e}
+
+const objUrl=URL.createObjectURL(modelBlob)
+let obj
+try{obj=await new OBJLoader().loadAsync(objUrl)}
+catch(e){err('Error parsing model<br><small>'+e.message+'</small>');throw e}
+finally{URL.revokeObjectURL(objUrl)}
+
+step('Building scene...')
+obj.traverse(c=>{if(c.isMesh){c.castShadow=true;c.receiveShadow=true}})
+const rawBox=new THREE.Box3().setFromObject(obj)
+const bsz=new THREE.Vector3(); rawBox.getSize(bsz)
+const bc=new THREE.Vector3();  rawBox.getCenter(bc)
+if((CFG.model?.pivotMode||'centered')==='centered') obj.position.sub(bc)
+const mx=Math.max(bsz.x,bsz.y,bsz.z); obj.scale.setScalar(mx>0?2/mx:1)
+scene.add(obj)
+const wBox=new THREE.Box3().setFromObject(obj)
+const wCenter=new THREE.Vector3(); wBox.getCenter(wCenter)
+const radius=wBox.getBoundingSphere(new THREE.Sphere()).radius
+ground.position.y=wBox.min.y-.02
+
+/* ── Apply material ── */
+const TX=new THREE.TextureLoader()
+async function loadTex(path){
+  if(!path||path.startsWith('blob:'))return null
+  try{
+    const r=await fetch(path); if(!r.ok) return null
+    const b=await r.blob(); const u=URL.createObjectURL(b)
+    const t=await TX.loadAsync(u); URL.revokeObjectURL(u)
+    t.colorSpace=THREE.SRGBColorSpace; t.wrapS=t.wrapT=THREE.RepeatWrapping
+    return t
+  }catch{return null}
+}
+
+const mat=CFG.material||{}
+let albTex=null
+if(mat.useTexture&&mat.albedoTextureUrl&&!mat.albedoTextureUrl.startsWith('blob:'))
+  albTex=await loadTex(mat.albedoTextureUrl)
+
+const envMap=scene.environment||null
+
+if(mat.mode==='mix'){
+  const u={
+    uCA:{value:new THREE.Color(mat.matA?.albedoColor||'#1a3a6a')},
+    uCB:{value:new THREE.Color(mat.matB?.albedoColor||'#6a1a1a')},
+    uMix:{value:mat.mixFactor??0.5},
+    uRA:{value:1-(mat.matA?.glossiness??0.8)}, uRB:{value:1-(mat.matB?.glossiness??0.2)},
+    uMA:{value:mat.matA?.reflection??0.5},     uMB:{value:mat.matB?.reflection??0.1},
+    uHTA:{value:0},uHTB:{value:0},uHTM:{value:0},
+    uTA:{value:null},uTB:{value:null},uTM:{value:null},
+  }
+  const mm=new THREE.ShaderMaterial({uniforms:u,lights:true,fog:false,
+    vertexShader:`varying vec2 vUv;varying vec3 vN,vWP;void main(){vUv=uv;vN=normalize(normalMatrix*normal);vec4 wp=modelMatrix*vec4(position,1.);vWP=wp.xyz;gl_Position=projectionMatrix*viewMatrix*wp;}`,
+    fragmentShader:`precision highp float;
+    uniform vec3 uCA,uCB;uniform sampler2D uTA,uTB,uTM;
+    uniform float uHTA,uHTB,uHTM,uMix,uRA,uRB,uMA,uMB;
+    varying vec2 vUv;varying vec3 vN,vWP;
+    #include <lights_pars_begin>
+    void main(){
+      vec3 cA=uHTA>.5?texture2D(uTA,vUv).rgb:uCA;
+      vec3 cB=uHTB>.5?texture2D(uTB,vUv).rgb:uCB;
+      float f=uHTM>.5?texture2D(uTM,vUv).r:uMix;
+      vec3 alb=mix(cA,cB,f);float rough=mix(uRA,uRB,f);float metal=mix(uMA,uMB,f);
+      vec3 N=normalize(vN);vec3 col=ambientLightColor*alb*(1.-metal*.5);
+      #if NUM_HEMI_LIGHTS>0
+      for(int i=0;i<NUM_HEMI_LIGHTS;i++){float h=dot(N,hemisphereLights[i].direction)*.5+.5;col+=mix(hemisphereLights[i].groundColor,hemisphereLights[i].skyColor,h)*alb*(1.-metal*.35);}
+      #endif
+      #if NUM_DIR_LIGHTS>0
+      for(int i=0;i<NUM_DIR_LIGHTS;i++){
+        vec3 L=normalize(directionalLights[i].direction);float d=max(dot(N,L),0.);
+        col+=directionalLights[i].color*alb*d*(1.-metal*.4);
+        if(d>0.){vec3 V=normalize(cameraPosition-vWP);vec3 H=normalize(L+V);float sp=pow(max(dot(N,H),0.),mix(8.,192.,1.-rough));col+=directionalLights[i].color*sp*(metal*.6+.08);}
+      }#endif
+      col=pow(clamp(col,0.,1.),vec3(1./2.2));gl_FragColor=vec4(col,1.);}
+  `})
+  mm._isMix=true
+  obj.traverse(c=>{
+    if(!c.isMesh)return
+    const old=Array.isArray(c.material)?c.material:[c.material]; old.forEach(m=>m&&m.dispose())
+    c.material=mm
+  })
+}else{
+  obj.traverse(c=>{
+    if(!c.isMesh)return
+    const old=Array.isArray(c.material)?c.material:[c.material]; old.forEach(m=>m&&m.dispose())
+    c.material=new THREE.MeshStandardMaterial({
+      // CRITICAL: white when using texture so colors are not multiplied/tinted
+      color: albTex ? new THREE.Color(0xffffff) : new THREE.Color(mat.albedoColor||'#888888'),
+      roughness:Math.max(.001,1-(mat.glossiness??0.55)),
+      metalness:Math.max(0,Math.min(1,mat.reflection??0)),
+      map:albTex||null,
+      envMap:envMap,
+      envMapIntensity:mat.envMapIntensity??1,
+    })
+  })
+}
+
+/* ── Camera ── */
+const CAM={
+  target:wCenter.clone(),
+  // theta = horizontal rotation (controlled by slider)
+  theta:0, phi:Math.PI/2, r:0,
+  tTheta:0, tPhi:Math.PI/2, tR:0,
+  pX:0, tpX:0, pY:0, tpY:0,
+}
+;(function(){
+  const fovR=camera.fov*Math.PI/180
+  CAM.r=CAM.tR=radius/Math.sin(Math.min(fovR/2,Math.atan(camera.aspect)*fovR/2))*1.4
+})()
+
+function camTick(){
+  const lf=0.1
+  CAM.theta+=(CAM.tTheta-CAM.theta)*lf
+  CAM.phi  +=(CAM.tPhi  -CAM.phi  )*lf
+  CAM.r    +=(CAM.tR    -CAM.r    )*lf
+  CAM.pX   +=(CAM.tpX  -CAM.pX   )*lf
+  CAM.pY   +=(CAM.tpY  -CAM.pY   )*lf
+  const x=CAM.r*Math.sin(CAM.phi)*Math.sin(CAM.theta)
+  const y=CAM.r*Math.cos(CAM.phi)
+  const z=CAM.r*Math.sin(CAM.phi)*Math.cos(CAM.theta)
+  const et=new THREE.Vector3(CAM.target.x+CAM.pX,CAM.target.y+CAM.pY,CAM.target.z)
+  camera.position.set(et.x+x,et.y+y,et.z+z); camera.lookAt(et)
+}
+
+function doPan(dx,dy){
+  const s=CAM.r*.002
+  const dir=new THREE.Vector3(Math.sin(CAM.phi)*Math.sin(CAM.theta),Math.cos(CAM.phi),Math.sin(CAM.phi)*Math.cos(CAM.theta))
+  const right=new THREE.Vector3().crossVectors(dir,new THREE.Vector3(0,1,0)).normalize()
+  const up=new THREE.Vector3().crossVectors(right,dir).normalize()
+  CAM.tpX-=dx*s*right.x; CAM.tpY-=dx*s*right.y
+  CAM.tpX+=dy*s*up.x;    CAM.tpY+=dy*s*up.y
+}
+
+/* ── Orbit slider ── */
+const orbitTrack=$('orbitTrack'), orbitThumb=$('orbitThumb')
+let sliderDragging=false, sliderStartX=0, sliderStartTheta=0
+
+function getTrackWidth(){ return orbitTrack.getBoundingClientRect().width }
+
+function updateThumb(){
+  // Map theta to 0-100% of the track
+  // theta goes from -π to π. We show 0 (front) at center (50%)
+  // full drag left to right = -π to π = full 360°
+  const norm=(((CAM.tTheta%(Math.PI*2))+(Math.PI*2))%(Math.PI*2))
+  const pct=(norm/(Math.PI*2))*100
+  orbitThumb.style.left=pct+'%'
+}
+
+orbitTrack.addEventListener('mousedown',e=>{
+  sliderDragging=true; sliderStartX=e.clientX; sliderStartTheta=CAM.tTheta
+  e.preventDefault()
+})
+window.addEventListener('mousemove',e=>{
+  if(!sliderDragging) return
+  const dx=e.clientX-sliderStartX
+  const w=getTrackWidth()
+  // Full track width = 2π rotation
+  CAM.tTheta=sliderStartTheta-(dx/w)*Math.PI*2
+})
+window.addEventListener('mouseup',()=>sliderDragging=false)
+
+let tSliderX=0, tSliderTheta=0, tSliderActive=false
+orbitTrack.addEventListener('touchstart',e=>{
+  e.preventDefault()
+  if(e.touches.length===1){
+    tSliderActive=true; tSliderX=e.touches[0].clientX; tSliderTheta=CAM.tTheta
+  }
+},{passive:false})
+orbitTrack.addEventListener('touchmove',e=>{
+  e.preventDefault()
+  if(tSliderActive&&e.touches.length===1){
+    const dx=e.touches[0].clientX-tSliderX
+    const w=getTrackWidth()
+    CAM.tTheta=tSliderTheta-(dx/w)*Math.PI*2
+  }
+},{passive:false})
+orbitTrack.addEventListener('touchend',()=>tSliderActive=false,{passive:true})
+
+/* ── Scroll = zoom, Middle-click = pan ── */
+canvas.addEventListener('wheel',e=>{e.preventDefault();CAM.tR=Math.max(.4,Math.min(50,CAM.tR+e.deltaY*.003*CAM.tR))},{passive:false})
+canvas.addEventListener('contextmenu',e=>e.preventDefault())
+
+let _mpan=false, _mlx=0, _mly=0
+canvas.addEventListener('mousedown',e=>{
+  if(e.button===1||e.button===2){e.preventDefault();_mpan=true;_mlx=e.clientX;_mly=e.clientY}
+})
+window.addEventListener('mousemove',e=>{
+  if(!_mpan)return
+  const dx=e.clientX-_mlx, dy=e.clientY-_mly; _mlx=e.clientX; _mly=e.clientY
+  doPan(dx,dy)
+})
+window.addEventListener('mouseup',e=>{if(e.button===1||e.button===2)_mpan=false})
+
+/* ── Pinch zoom on mobile ── */
+let _lpd=null, _lp2cx=0, _lp2cy=0
+canvas.addEventListener('touchstart',e=>{
+  if(e.touches.length===2){
+    e.preventDefault()
+    _lpd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY)
+    _lp2cx=(e.touches[0].clientX+e.touches[1].clientX)/2
+    _lp2cy=(e.touches[0].clientY+e.touches[1].clientY)/2
+  }
+},{passive:false})
+canvas.addEventListener('touchmove',e=>{
+  if(e.touches.length===2){
+    e.preventDefault()
+    const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY)
+    const cx=(e.touches[0].clientX+e.touches[1].clientX)/2
+    const cy=(e.touches[0].clientY+e.touches[1].clientY)/2
+    if(_lpd!==null) CAM.tR=Math.max(.4,Math.min(50,CAM.tR*(_lpd/d)))
+    const dpx=cx-_lp2cx, dpy=cy-_lp2cy
+    if(Math.abs(dpx)>0.5||Math.abs(dpy)>0.5) doPan(dpx,dpy)
+    _lpd=d; _lp2cx=cx; _lp2cy=cy
+  }
+},{passive:false})
+canvas.addEventListener('touchend',e=>{if(e.touches.length<2)_lpd=null},{passive:true})
+
+/* ── Render loop ── */
+function loop(){
+  requestAnimationFrame(loop)
+  camTick()
+  updateThumb()
+  ren.render(scene,camera)
+}
+loop()
+setTimeout(()=>ldiv.classList.add('out'),300)
+</script>
+</body>
+</html>

@@ -2,7 +2,7 @@
   "id": "lua-001",
   "name": "Lua",
   "version": "1.0",
-  "publishedAt": "2026-07-13T20:34:35.728Z",
+  "publishedAt": "2026-07-13T21:27:46.946Z",
   "model": {
     "file": "Stick.obj",
     "pivotMode": "centered",
@@ -30,7 +30,7 @@
     "mode": "simple",
     "albedoColor": "#2a4a7a",
     "useTexture": true,
-    "albedoTextureUrl": null,
+    "albedoTextureUrl": "./textures/albedo.jpg",
     "glossiness": 0.87,
     "reflection": 0.41,
     "envMapIntensity": 1,

@@ -301,16 +301,29 @@ function camTick(){
   const x=CAM.r*Math.sin(CAM.phi)*Math.sin(CAM.theta)
   const y=CAM.r*Math.cos(CAM.phi)
   const z=CAM.r*Math.sin(CAM.phi)*Math.cos(CAM.theta)
-  const et=new THREE.Vector3(CAM.target.x+CAM.pX,CAM.target.y+CAM.pY,CAM.target.z)
+  // Flat pan: offset target in world X, Y, Z independently
+  CAM.pZ=(CAM.pZ||0)+(((CAM.tpZ||0)-(CAM.pZ||0))*lf)
+  const et=new THREE.Vector3(CAM.target.x+CAM.pX,CAM.target.y+CAM.pY,CAM.target.z+(CAM.pZ||0))
   camera.position.set(et.x+x,et.y+y,et.z+z);camera.lookAt(et)
 }
 function doPan(dx,dy){
-  const s=CAM.r*.002
-  const dir=new THREE.Vector3(Math.sin(CAM.phi)*Math.sin(CAM.theta),Math.cos(CAM.phi),Math.sin(CAM.phi)*Math.cos(CAM.theta))
-  const right=new THREE.Vector3().crossVectors(dir,new THREE.Vector3(0,1,0)).normalize()
-  const up=new THREE.Vector3().crossVectors(right,dir).normalize()
-  CAM.tpX-=dx*s*right.x;CAM.tpY-=dx*s*right.y
-  CAM.tpX+=dy*s*up.x;CAM.tpY+=dy*s*up.y
+  // True flat pan: move object in screen-aligned world space
+  // Right = camera's horizontal axis (X column of view matrix), flattened to XZ
+  // Up = pure world Y (vertical on screen always = up in world)
+  const scale=CAM.r*0.0018
+
+  const right=new THREE.Vector3()
+  right.setFromMatrixColumn(camera.matrixWorld,0) // camera right vector
+  // Flatten: only use XZ components so horizontal drag stays horizontal
+  right.y=0
+  if(right.lengthSq()>0) right.normalize()
+  else right.set(1,0,0)
+
+  // Horizontal drag = move along camera's right XZ
+  CAM.tpX -= dx*scale*right.x
+  CAM.tpZ  = (CAM.tpZ||0) - dx*scale*right.z
+  // Vertical drag = pure Y (always up/down regardless of camera angle)
+  CAM.tpY += dy*scale
 }
 
 /* ── Pan mode ── */

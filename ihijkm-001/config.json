@@ -1,0 +1,95 @@
+{
+  "id": "ihijkm-001",
+  "name": "ihijkm",
+  "version": "1.0",
+  "publishedAt": "2026-07-14T21:43:35.874Z",
+  "model": {
+    "file": "Sticknovo2.obj",
+    "pivotMode": "manual",
+    "pivotXYZ": [
+      -0.265,
+      1.361,
+      0.772
+    ],
+    "bb": {
+      "center": {
+        "x": -0.41513646773404844,
+        "y": 1.3210671817579431,
+        "z": 0.7322605564131139
+      },
+      "size": {
+        "x": 0.33711283594231345,
+        "y": 2,
+        "z": 0.07769770431870615
+      },
+      "radius": 1.0148499885960323,
+      "minY": 0.321067181757943,
+      "raw": {
+        "w": "0.048",
+        "h": "0.285",
+        "d": "0.011"
+      }
+    }
+  },
+  "material": {
+    "mode": "simple",
+    "mixFactor": 0.54,
+    "maskTextureUrl": null,
+    "standard": {
+      "baseColor": "#e8e8e8",
+      "albedoTexUrl": "./textures/std_albedo.jpg",
+      "opacity": 1,
+      "opacityTexUrl": null,
+      "metallic": 0,
+      "metallicTexUrl": null,
+      "glossiness": 0.7,
+      "roughnessTexUrl": null,
+      "reflection": 0.34,
+      "preset": "plastic",
+      "_id": "std"
+    },
+    "matA": {
+      "baseColor": "#dceaf0",
+      "albedoTexUrl": "./textures/matA_albedo.jpg",
+      "opacity": 0.25,
+      "opacityTexUrl": null,
+      "metallic": 0,
+      "metallicTexUrl": null,
+      "glossiness": 0.95,
+      "roughnessTexUrl": null,
+      "reflection": 0.6,
+      "preset": "glass",
+      "_id": "matA"
+    },
+    "matB": {
+      "baseColor": "#6a1a1a",
+      "albedoTexUrl": null,
+      "opacity": 1,
+      "opacityTexUrl": null,
+      "metallic": 0.1,
+      "metallicTexUrl": null,
+      "glossiness": 0.2,
+      "roughnessTexUrl": null,
+      "reflection": 0,
+      "preset": null
+    }
+  },
+  "lighting": {
+    "mode": "hdri",
+    "hdriUrl": "./textures/env.exr",
+    "hdriFileName": "studio_small_03_2k.exr",
+    "hdriIntensity": 0.25,
+    "intensity": 5.1,
+    "azimuth": 286,
+    "elevation": 35,
+    "shadowOpacity": 0.15
+  },
+  "background": {
+    "mode": "gradient",
+    "solidColor": "#0d0d11",
+    "gradientPreset": -1,
+    "gradientStart": "#000000",
+    "gradientEnd": "#1a1a1a",
+    "gradientAngle": 145
+  }
+}

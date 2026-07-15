@@ -16,18 +16,18 @@ canvas{display:block;position:absolute;inset:0;width:100%!important;height:100%!
 #ld.out{opacity:0;pointer-events:none}
 .ring{width:40px;height:40px;border:3px solid rgba(255,255,255,.08);border-top-color:#9b8cff;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.ltxt{font-size:13px;color:rgba(255,255,255,.35);letter-spacing:.04em}
-.lerr{font-size:13px;color:#f87171;text-align:center;max-width:280px;line-height:1.8;padding:16px 20px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:12px}
+.ltxt{font-size:13px;color:#b8b8d2;letter-spacing:.04em}
+.lerr{font-size:13px;color:#ffa3a3;text-align:center;max-width:280px;line-height:1.8;padding:16px 20px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:12px}
 /* Brand */
-.topbar{position:absolute;top:0;left:0;right:0;height:48px;display:flex;align-items:center;padding:0 16px;background:linear-gradient(to bottom,rgba(0,0,0,.5),transparent);z-index:10;pointer-events:none}
+.topbar{position:absolute;top:0;left:0;right:0;height:48px;display:flex;align-items:center;padding:0 16px;background:linear-gradient(to bottom,rgba(0,0,0,.88),rgba(0,0,0,.6) 75%,transparent);z-index:10;pointer-events:none}
 .bmark{width:20px;height:20px;background:#7c6aff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff}
-.bname{font-size:11px;font-weight:700;letter-spacing:.08em;color:rgba(255,255,255,.6);text-transform:uppercase;margin-left:8px}
-.bsep{color:rgba(255,255,255,.2);margin:0 5px}
-.bprod{font-size:11px;color:rgba(255,255,255,.35);max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bname{font-size:11px;font-weight:700;letter-spacing:.08em;color:#f0f0f8;text-transform:uppercase;margin-left:8px}
+.bsep{color:#b8b8d2;margin:0 5px}
+.bprod{font-size:11px;color:#b8b8d2;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Control bar */
 .ctrl-bar{
   position:absolute;bottom:0;left:0;right:0;z-index:10;
-  background:rgba(0,0,0,.7);
+  background:rgba(0,0,0,.85);
   backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   border-top:1px solid rgba(255,255,255,.08);
   padding:14px 24px 20px;
@@ -38,14 +38,14 @@ canvas{display:block;position:absolute;inset:0;width:100%!important;height:100%!
 .pan-btn{
   display:flex;align-items:center;gap:6px;padding:7px 14px;
   border-radius:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);
-  color:rgba(255,255,255,.55);font-size:12px;font-weight:600;letter-spacing:.04em;
+  color:#dcdcee;font-size:12px;font-weight:600;letter-spacing:.04em;
   cursor:pointer;transition:all .2s;font-family:inherit;
   -webkit-tap-highlight-color:transparent;touch-action:manipulation;
 }
 .pan-btn:active{transform:scale(.95)}
-.pan-btn.on{background:rgba(124,106,255,.28);border-color:rgba(124,106,255,.55);color:#c0b4ff}
+.pan-btn.on{background:rgba(124,106,255,.35);border-color:rgba(124,106,255,.65);color:#e0d9ff}
 .pan-btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.zoom-hint{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.2)}
+.zoom-hint{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#b8b8d2}
 /* Slider */
 .slider-wrap{
   width:50%;display:flex;flex-direction:column;align-items:stretch;gap:5px;
@@ -61,7 +61,7 @@ canvas{display:block;position:absolute;inset:0;width:100%!important;height:100%!
   transform:translateX(-50%);pointer-events:none;
   transition:background .2s;
 }
-.orbit-label{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.2);text-align:center}
+.orbit-label{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#b8b8d2;text-align:center}
 </style>
 </head>
 <body>
@@ -165,19 +165,23 @@ import('three/addons/environments/RoomEnvironment.js').then(({RoomEnvironment})=
   scene.environment=_defEnv;pmrem.dispose()
 }).catch(()=>{})
 
-function applyLighting(l){
+let _hdriRawTex=null,_hdriIntensity=1.5
+async function applyLighting(l){
   if(!l){ren.toneMappingExposure=1.5;return}
   if(l.mode==='hdri'&&l.hdriUrl){
-    import('three/addons/loaders/RGBELoader.js').then(({RGBELoader})=>{
-      new RGBELoader().load(l.hdriUrl,tex=>{
-        const pmrem=new THREE.PMREMGenerator(ren);pmrem.compileEquirectangularShader()
-        const envMap=pmrem.fromEquirectangular(tex).texture
-        scene.environment=envMap;pmrem.dispose();tex.dispose()
-        ren.toneMappingExposure=Math.max(.5,l.hdriIntensity??1.5)
-        hemiLight.intensity=0;keyLight.intensity=0;fillLight.intensity=0;ambLight.intensity=.05
-        scene.traverse(c=>{if(c.isMesh&&c.material&&!c.material._isMix){c.material.envMap=envMap;c.material.needsUpdate=true}})
-      },undefined,()=>{})
-    }).catch(()=>{})
+    try{
+      const{RGBELoader}=await import('three/addons/loaders/RGBELoader.js')
+      const tex=await new RGBELoader().loadAsync(l.hdriUrl)
+      const pmrem=new THREE.PMREMGenerator(ren);pmrem.compileEquirectangularShader()
+      const envMap=pmrem.fromEquirectangular(tex).texture
+      scene.environment=envMap;pmrem.dispose()
+      // Keep raw equirect texture for Mix Shader reflection sampling
+      tex.wrapS=THREE.RepeatWrapping;tex.wrapT=THREE.ClampToEdgeWrapping;tex.needsUpdate=true
+      _hdriRawTex=tex;_hdriIntensity=l.hdriIntensity??1.5
+      ren.toneMappingExposure=Math.max(.5,_hdriIntensity)
+      hemiLight.intensity=0;keyLight.intensity=0;fillLight.intensity=0;ambLight.intensity=.05
+      scene.traverse(c=>{if(c.isMesh&&c.material&&!c.material._isMix){c.material.envMap=envMap;c.material.needsUpdate=true}})
+    }catch(e){/* keep default lighting on failure */}
     return
   }
   const v=l.intensity??5
@@ -190,7 +194,7 @@ function applyLighting(l){
   keyLight.position.set(d*Math.sin(az)*Math.cos(el),d*Math.sin(el),d*Math.cos(az)*Math.cos(el))
   if(ground?.material)ground.material.opacity=l.shadowOpacity??0.15
 }
-applyLighting(CFG.lighting)
+await applyLighting(CFG.lighting)
 
 /* ── Load model ── */
 step('Loading model...')
@@ -326,14 +330,6 @@ async function loadTex(path){
     return t
   }catch{return null}
 }
-let _fallbackTex=null
-function fallbackTex(){
-  if(_fallbackTex)return _fallbackTex
-  const data=new Uint8Array([255,255,255,255])
-  _fallbackTex=new THREE.DataTexture(data,1,1,THREE.RGBAFormat)
-  _fallbackTex.needsUpdate=true
-  return _fallbackTex
-}
 const mat=CFG.material||{}
 const envMap=scene.environment||null
 
@@ -347,85 +343,68 @@ async function loadSlotTex(slot){
   return{alb,op,rough,metal}
 }
 
+function buildStdMat(slot,tex,env){
+  slot=slot||{}
+  const hasOp=!!tex.op||(slot.opacity??1)<1
+  return new THREE.MeshStandardMaterial({
+    color:new THREE.Color(slot.baseColor||slot.albedoColor||'#888888'),
+    map:tex.alb||null,
+    roughness:Math.max(.03,1-(slot.glossiness??0.55)),
+    roughnessMap:tex.rough||null,
+    metalness:Math.max(0,Math.min(1,slot.metallic??slot.reflection??0)),
+    metalnessMap:tex.metal||null,
+    alphaMap:tex.op||null,
+    opacity:slot.opacity??1,
+    transparent:hasOp,
+    envMap:env,
+    envMapIntensity:(slot.reflection??0)*2+0.3,
+  })
+}
+
 if(mat.mode==='mix'){
-  const mA=mat.matA||{},mB=mat.matB||{}
-  const[texA,texB,maskTex]=await Promise.all([loadSlotTex(mA),loadSlotTex(mB),loadTex(mat.maskTextureUrl)])
-  const FB=fallbackTex()
-  const u={
-    uACol:{value:new THREE.Color(mA.baseColor||'#2a4a7a')},
-    uBCol:{value:new THREE.Color(mB.baseColor||'#7a2a2a')},
-    uAAlb:{value:texA.alb||FB},uBAlb:{value:texB.alb||FB},
-    uAHasAlb:{value:texA.alb?1:0},uBHasAlb:{value:texB.alb?1:0},
-    uAOp:{value:mA.opacity??1},uBOp:{value:mB.opacity??1},
-    uAOpTex:{value:texA.op||FB},uBOpTex:{value:texB.op||FB},
-    uAHasOp:{value:texA.op?1:0},uBHasOp:{value:texB.op?1:0},
-    uARough:{value:1-(mA.glossiness??.8)},uBRough:{value:1-(mB.glossiness??.2)},
-    uARoughTex:{value:texA.rough||FB},uBRoughTex:{value:texB.rough||FB},
-    uAHasRough:{value:texA.rough?1:0},uBHasRough:{value:texB.rough?1:0},
-    uAMetal:{value:mA.metallic??0},uBMetal:{value:mB.metallic??0},
-    uAMetalTex:{value:texA.metal||FB},uBMetalTex:{value:texB.metal||FB},
-    uAHasMetal:{value:texA.metal?1:0},uBHasMetal:{value:texB.metal?1:0},
-    uARefl:{value:mA.reflection??0},uBRefl:{value:mB.reflection??0},
-    uMaskTex:{value:maskTex||FB},uHasMask:{value:maskTex?1:0},
-    uMixFactor:{value:mat.mixFactor??.5},
+  // Mix Shader = two REAL Standard-shader materials blended per-pixel by an
+  // alpha mask — identical envMap/roughness/metalness pipeline as Standard
+  // mode, rendered as an opaque base mesh + a transparent overlay mesh.
+  const invert=!!mat.invertMask
+  const baseSlot=invert?(mat.matB||{}):(mat.matA||{})
+  const overlaySlot=invert?(mat.matA||{}):(mat.matB||{})
+  const[baseTex,overlayTex,maskTex]=await Promise.all([
+    loadSlotTex(baseSlot),loadSlotTex(overlaySlot),loadTex(mat.maskTextureUrl)
+  ])
+  const baseMat=buildStdMat(baseSlot,baseTex,envMap)
+  const overlayMat=buildStdMat(overlaySlot,overlayTex,envMap)
+  overlayMat.transparent=true
+  overlayMat.depthWrite=false
+  overlayMat.polygonOffset=true
+  overlayMat.polygonOffsetFactor=-1
+  if(maskTex){
+    overlayMat.alphaMap=maskTex
+    overlayMat.opacity=1
+  } else {
+    const mf=mat.mixFactor??.5
+    overlayMat.opacity=invert?(1-mf):mf
   }
-  const mm=new THREE.ShaderMaterial({uniforms:u,lights:true,fog:false,transparent:true,
-    vertexShader:`varying vec2 vUv;varying vec3 vN,vWP;void main(){vUv=uv;vN=normalize(normalMatrix*normal);vec4 wp=modelMatrix*vec4(position,1.);vWP=wp.xyz;gl_Position=projectionMatrix*viewMatrix*wp;}`,
-    fragmentShader:`precision highp float;
-    uniform vec3 uACol,uBCol;
-    uniform sampler2D uAAlb,uBAlb,uAOpTex,uBOpTex,uARoughTex,uBRoughTex,uAMetalTex,uBMetalTex,uMaskTex;
-    uniform float uAHasAlb,uBHasAlb,uAOp,uBOp,uAHasOp,uBHasOp,uARough,uBRough,uAHasRough,uBHasRough;
-    uniform float uAMetal,uBMetal,uAHasMetal,uBHasMetal,uARefl,uBRefl,uHasMask,uMixFactor;
-    varying vec2 vUv;varying vec3 vN,vWP;
-    #include <lights_pars_begin>
-    void main(){
-      vec3 cA=uAHasAlb>.5?texture2D(uAAlb,vUv).rgb*uACol:uACol;
-      vec3 cB=uBHasAlb>.5?texture2D(uBAlb,vUv).rgb*uBCol:uBCol;
-      float opA=uAOp*(uAHasOp>.5?texture2D(uAOpTex,vUv).r:1.0);
-      float opB=uBOp*(uBHasOp>.5?texture2D(uBOpTex,vUv).r:1.0);
-      float roughA=uARough*(uAHasRough>.5?texture2D(uARoughTex,vUv).r:1.0);
-      float roughB=uBRough*(uBHasRough>.5?texture2D(uBRoughTex,vUv).r:1.0);
-      float metalA=uAMetal*(uAHasMetal>.5?texture2D(uAMetalTex,vUv).r:1.0);
-      float metalB=uBMetal*(uBHasMetal>.5?texture2D(uBMetalTex,vUv).r:1.0);
-      float f=uHasMask>.5?texture2D(uMaskTex,vUv).r:uMixFactor;
-      vec3 alb=mix(cA,cB,f);
-      float rough=clamp(mix(roughA,roughB,f),0.03,1.0);
-      float metal=mix(metalA,metalB,f);
-      float op=mix(opA,opB,f);
-      float refl=mix(uARefl,uBRefl,f);
-      vec3 N=normalize(vN);vec3 col=ambientLightColor*alb*(1.-metal*.5);
-      #if NUM_HEMI_LIGHTS>0
-      for(int i=0;i<NUM_HEMI_LIGHTS;i++){float h=dot(N,hemisphereLights[i].direction)*.5+.5;col+=mix(hemisphereLights[i].groundColor,hemisphereLights[i].skyColor,h)*alb*(1.-metal*.35);}
-      #endif
-      #if NUM_DIR_LIGHTS>0
-      for(int i=0;i<NUM_DIR_LIGHTS;i++){vec3 L=normalize(directionalLights[i].direction);float d=max(dot(N,L),0.);col+=directionalLights[i].color*alb*d*(1.-metal*.4);if(d>0.){vec3 V=normalize(cameraPosition-vWP);vec3 H=normalize(L+V);float sp=pow(max(dot(N,H),0.),mix(8.,192.,1.-rough));col+=directionalLights[i].color*sp*(metal*.6+.08+refl*.5);}}
-      #endif
-      col=pow(clamp(col,0.,1.),vec3(1./2.2));gl_FragColor=vec4(col,op);}
-  `})
-  mm._isMix=true
-  obj.traverse(c=>{if(!c.isMesh)return;const old=Array.isArray(c.material)?c.material:[c.material];old.forEach(m=>m&&m.dispose());c.material=mm})
-}else{
-  const std=mat.standard||mat||{}
-  const t=await loadSlotTex(std)
-  const hasOp=!!t.op||(std.opacity??1)<1
   obj.traverse(c=>{
     if(!c.isMesh)return
     const old=Array.isArray(c.material)?c.material:[c.material];old.forEach(m=>m&&m.dispose())
-    c.material=new THREE.MeshStandardMaterial({
-      color:new THREE.Color(std.baseColor||std.albedoColor||'#888888'),
-      map:t.alb||null,
-      roughness:Math.max(.03,1-(std.glossiness??0.55)),
-      roughnessMap:t.rough||null,
-      metalness:Math.max(0,Math.min(1,std.metallic??std.reflection??0)),
-      metalnessMap:t.metal||null,
-      alphaMap:t.op||null,
-      opacity:std.opacity??1,
-      transparent:hasOp,
-      envMap:envMap,
-      envMapIntensity:(std.reflection??0)*2+0.3,
-    })
+    c.material=baseMat
+    const overlay=new THREE.Mesh(c.geometry,overlayMat)
+    overlay.renderOrder=1
+    overlay.castShadow=false;overlay.receiveShadow=false
+    c.add(overlay)
+  })
+}else{
+  const std=mat.standard||mat||{}
+  const t=await loadSlotTex(std)
+  const stdMat=buildStdMat(std,t,envMap)
+  obj.traverse(c=>{
+    if(!c.isMesh)return
+    const old=Array.isArray(c.material)?c.material:[c.material];old.forEach(m=>m&&m.dispose())
+    c.material=stdMat
   })
 }
+
+/* ── Pan mode ── */
 
 /* ── Pan mode ── */
 let _panMode=false

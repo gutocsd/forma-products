@@ -2,7 +2,7 @@
   "id": "ihijkm-001",
   "name": "ihijkm",
   "version": "1.0",
-  "publishedAt": "2026-07-14T21:47:01.789Z",
+  "publishedAt": "2026-07-15T21:59:22.371Z",
   "model": {
     "file": "Sticknovo2.obj",
     "pivotMode": "manual",
@@ -32,57 +32,60 @@
     }
   },
   "material": {
-    "mode": "simple",
-    "mixFactor": 0.54,
-    "maskTextureUrl": null,
+    "mode": "mix",
+    "mixFactor": 0.53,
+    "maskTextureUrl": "./textures/mask.jpg",
     "standard": {
-      "baseColor": "#e8e8e8",
+      "baseColor": "#b8b8c0",
       "albedoTexUrl": "./textures/std_albedo.jpg",
       "opacity": 1,
       "opacityTexUrl": null,
-      "metallic": 0,
+      "metallic": 0.5,
       "metallicTexUrl": null,
-      "glossiness": 0.7,
+      "glossiness": 0.89,
       "roughnessTexUrl": null,
-      "reflection": 0.34,
-      "preset": "plastic",
+      "reflection": 0.55,
+      "preset": "metal",
       "_id": "std"
     },
     "matA": {
-      "baseColor": "#dceaf0",
+      "baseColor": "#e8e8e8",
       "albedoTexUrl": "./textures/matA_albedo.jpg",
-      "opacity": 0.25,
+      "opacity": 1,
       "opacityTexUrl": null,
       "metallic": 0,
       "metallicTexUrl": null,
-      "glossiness": 0.95,
+      "glossiness": 0.68,
       "roughnessTexUrl": null,
-      "reflection": 0.6,
-      "preset": "glass",
+      "reflection": 0.03,
+      "preset": "plastic",
       "_id": "matA"
     },
     "matB": {
-      "baseColor": "#6a1a1a",
+      "baseColor": "#b8b8c0",
       "albedoTexUrl": null,
       "opacity": 1,
       "opacityTexUrl": null,
-      "metallic": 0.1,
+      "metallic": 1,
       "metallicTexUrl": null,
-      "glossiness": 0.2,
+      "glossiness": 0.94,
       "roughnessTexUrl": null,
-      "reflection": 0,
-      "preset": null
-    }
+      "reflection": 0.8,
+      "preset": "metal",
+      "_id": "matB"
+    },
+    "invertMask": false
   },
   "lighting": {
     "mode": "hdri",
     "hdriUrl": "./textures/env.exr",
-    "hdriFileName": "studio_small_03_2k.exr",
-    "hdriIntensity": 0.25,
-    "intensity": 5.1,
+    "hdriFileName": "potsdamer_platz_2k.exr",
+    "hdriIntensity": 4.05,
+    "intensity": 2.7,
     "azimuth": 286,
     "elevation": 35,
-    "shadowOpacity": 0.15
+    "shadowOpacity": 0.15,
+    "hdriPreset": -1
   },
   "background": {
     "mode": "gradient",

@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>FORMA Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#0d0d11;font-family:'Inter',system-ui,sans-serif;touch-action:none}
+canvas{display:block;position:absolute;inset:0;width:100%!important;height:100%!important;touch-action:none}
+.bg{position:absolute;inset:0;z-index:0}
+/* Loading */
+#ld{position:absolute;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#0d0d11;transition:opacity .5s}
+#ld.out{opacity:0;pointer-events:none}
+.ring{width:40px;height:40px;border:3px solid rgba(255,255,255,.08);border-top-color:#9b8cff;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ltxt{font-size:13px;color:#b8b8d2;letter-spacing:.04em}
+.lerr{font-size:13px;color:#ffa3a3;text-align:center;max-width:280px;line-height:1.8;padding:16px 20px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.2);border-radius:12px}
+/* Brand */
+.topbar{position:absolute;top:0;left:0;right:0;height:48px;display:flex;align-items:center;padding:0 16px;background:linear-gradient(to bottom,rgba(0,0,0,.88),rgba(0,0,0,.6) 75%,transparent);z-index:10;pointer-events:none}
+.bmark{width:20px;height:20px;background:#7c6aff;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff}
+.bname{font-size:11px;font-weight:700;letter-spacing:.08em;color:#f0f0f8;text-transform:uppercase;margin-left:8px}
+.bsep{color:#b8b8d2;margin:0 5px}
+.bprod{font-size:11px;color:#b8b8d2;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Control bar */
+.ctrl-bar{
+  position:absolute;bottom:0;left:0;right:0;z-index:10;
+  background:rgba(0,0,0,.85);
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-top:1px solid rgba(255,255,255,.08);
+  padding:14px 24px 20px;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+}
+/* Pan button */
+.top-row{width:100%;display:flex;align-items:center;justify-content:space-between}
+.pan-btn{
+  display:flex;align-items:center;gap:6px;padding:7px 14px;
+  border-radius:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);
+  color:#dcdcee;font-size:12px;font-weight:600;letter-spacing:.04em;
+  cursor:pointer;transition:all .2s;font-family:inherit;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+}
+.pan-btn:active{transform:scale(.95)}
+.pan-btn.on{background:rgba(124,106,255,.35);border-color:rgba(124,106,255,.65);color:#e0d9ff}
+.pan-btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.zoom-hint{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#b8b8d2}
+/* Slider */
+.slider-wrap{
+  width:50%;display:flex;flex-direction:column;align-items:stretch;gap:5px;
+}
+.orbit-track{
+  position:relative;height:32px;display:flex;align-items:center;
+  cursor:ew-resize;touch-action:none;-webkit-tap-highlight-color:transparent;
+}
+.orbit-rail{position:absolute;left:0;right:0;height:2px;background:rgba(255,255,255,.2);border-radius:2px}
+.orbit-thumb{
+  position:absolute;width:18px;height:18px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.5);
+  transform:translateX(-50%);pointer-events:none;
+  transition:background .2s;
+}
+.orbit-label{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#b8b8d2;text-align:center}
+</style>
+</head>
+<body>
+<div class="bg" id="bg"></div>
+<canvas id="c"></canvas>
+<div id="ld"><div class="ring"></div><div class="ltxt" id="ltxt">Loading...</div></div>
+
+<div class="topbar">
+  <div class="bmark">F</div>
+  <div class="bname">Forma</div>
+  <div class="bsep">·</div>
+  <div class="bprod" id="bprod"></div>
+</div>
+
+<div class="ctrl-bar">
+  <div class="top-row">
+    <button class="pan-btn" id="panBtn" onclick="togglePan()">
+      <svg viewBox="0 0 24 24"><path d="M9 3v9M6 6V5a3 3 0 0 1 6 0v4"/><path d="M12 5a3 3 0 0 1 6 0v7a6 6 0 0 1-12 0V9a3 3 0 0 1 3-3"/></svg>
+      <span id="panLbl">Pan</span>
+    </button>
+    <div class="zoom-hint">Scroll to zoom</div>
+  </div>
+  <div class="slider-wrap">
+    <div class="orbit-track" id="orbitTrack">
+      <div class="orbit-rail"></div>
+      <div class="orbit-thumb" id="orbitThumb" style="left:0%"></div>
+    </div>
+    <div class="orbit-label">← Drag to rotate 360°</div>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three'
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js'
+
+const $=id=>document.getElementById(id)
+const ldiv=$('ld'), ltxt=$('ltxt')
+function err(m){ldiv.innerHTML=`<div class="lerr">${m}</div>`}
+function step(m){ltxt.textContent=m}
+
+/* ── Load config ── */
+step('Reading config...')
+let CFG
+try{
+  const r=await fetch('./config.json');if(!r.ok)throw new Error('HTTP '+r.status)
+  CFG=await r.json()
+}catch(e){err('Cannot load config.json<br><small>'+e.message+'</small>');throw e}
+
+document.title=CFG.name+' — FORMA'
+$('bprod').textContent=CFG.name
+
+/* ── Renderer ── */
+const canvas=$('c')
+const ren=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'})
+ren.shadowMap.enabled=true;ren.shadowMap.type=THREE.PCFSoftShadowMap
+ren.toneMapping=THREE.ACESFilmicToneMapping;ren.outputColorSpace=THREE.SRGBColorSpace
+const scene=new THREE.Scene()
+const camera=new THREE.PerspectiveCamera(45,1,.01,2000)
+function resize(){
+  const w=window.innerWidth,h=window.innerHeight
+  ren.setSize(w,h);ren.setPixelRatio(Math.min(devicePixelRatio,3))
+  camera.aspect=w/h;camera.updateProjectionMatrix()
+}
+resize();window.addEventListener('resize',resize)
+
+/* ── Background ── */
+const bg=CFG.background||{}
+;(()=>{
+  if(bg.mode==='gradient'){ren.setClearColor(0,0);$('bg').style.background=`linear-gradient(${bg.gradientAngle||135}deg,${bg.gradientStart||'#0f0c29'},${bg.gradientEnd||'#24243e'})`}
+  else{ren.setClearColor(bg.solidColor||'#0e0e14',1)}
+})()
+
+/* ── Lights ── */
+const ambLight=new THREE.AmbientLight(0xffffff,.2)
+const hemiLight=new THREE.HemisphereLight(0xffffff,0x888888,1.5)
+const keyLight=new THREE.DirectionalLight(0xfff8f0,2.5)
+const fillLight=new THREE.DirectionalLight(0xc0d4ff,.8)
+const rimLight=new THREE.DirectionalLight(0xffffff,.35)
+keyLight.castShadow=true;keyLight.shadow.mapSize.set(2048,2048);keyLight.shadow.bias=-.0003
+const ksc=keyLight.shadow.camera;ksc.left=-6;ksc.right=6;ksc.top=6;ksc.bottom=-6;ksc.near=.1;ksc.far=60
+fillLight.position.set(-4,3,-3);rimLight.position.set(0,2,-8)
+scene.add(ambLight,hemiLight,keyLight,fillLight,rimLight)
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.ShadowMaterial({opacity:.15,transparent:true}))
+ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground)
+
+function kelvin(k){
+  const t=k/100;let r,g,b
+  if(t<=66){r=255;g=Math.max(0,Math.min(255,99.47*Math.log(t)-161.12));b=t<=19?0:Math.max(0,Math.min(255,138.52*Math.log(t-10)-305.04))}
+  else{r=Math.max(0,Math.min(255,329.7*Math.pow(t-60,-.133)));g=Math.max(0,Math.min(255,288.12*Math.pow(t-60,-.0755)));b=255}
+  return `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`
+}
+
+/* ── Default IBL (RoomEnvironment) ── */
+let _defEnv=null
+import('three/addons/environments/RoomEnvironment.js').then(({RoomEnvironment})=>{
+  const pmrem=new THREE.PMREMGenerator(ren);pmrem.compileEquirectangularShader()
+  _defEnv=pmrem.fromScene(new RoomEnvironment(.5)).texture
+  scene.environment=_defEnv;pmrem.dispose()
+}).catch(()=>{})
+
+let _hdriRawTex=null,_hdriIntensity=1.5
+async function applyLighting(l){
+  if(!l){ren.toneMappingExposure=1.5;return}
+  if(l.mode==='hdri'&&l.hdriUrl){
+    try{
+      const{RGBELoader}=await import('three/addons/loaders/RGBELoader.js')
+      const tex=await new RGBELoader().loadAsync(l.hdriUrl)
+      const pmrem=new THREE.PMREMGenerator(ren);pmrem.compileEquirectangularShader()
+      const envMap=pmrem.fromEquirectangular(tex).texture
+      scene.environment=envMap;pmrem.dispose()
+      // Keep raw equirect texture for Mix Shader reflection sampling
+      tex.wrapS=THREE.RepeatWrapping;tex.wrapT=THREE.ClampToEdgeWrapping;tex.needsUpdate=true
+      _hdriRawTex=tex;_hdriIntensity=l.hdriIntensity??1.5
+      ren.toneMappingExposure=Math.max(.5,_hdriIntensity)
+      hemiLight.intensity=0;keyLight.intensity=0;fillLight.intensity=0;ambLight.intensity=.05
+      scene.traverse(c=>{if(c.isMesh&&c.material&&!c.material._isMix){c.material.envMap=envMap;c.material.needsUpdate=true}})
+    }catch(e){/* keep default lighting on failure */}
+    return
+  }
+  const v=l.intensity??5
+  ren.toneMappingExposure=v===0?0:Math.pow(v/5,2)*1.5+0.1
+  hemiLight.color.set(0xffffff);hemiLight.groundColor.set(0x777777);hemiLight.intensity=1.4
+  keyLight.intensity=2.0;keyLight.color.set(kelvin(l.keyTemp??5500))
+  fillLight.intensity=0.7;fillLight.color.set(0xc8d8ff)
+  rimLight.intensity=0.3;ambLight.intensity=0.15
+  const az=(l.azimuth??45)*Math.PI/180,el=(l.elevation??35)*Math.PI/180,d=8
+  keyLight.position.set(d*Math.sin(az)*Math.cos(el),d*Math.sin(el),d*Math.cos(az)*Math.cos(el))
+  if(ground?.material)ground.material.opacity=l.shadowOpacity??0.15
+}
+await applyLighting(CFG.lighting)
+
+/* ── Load model ── */
+step('Loading model...')
+const modelFile=CFG.model?.file||'model.obj'
+let mBlob
+try{const r=await fetch('./'+modelFile);if(!r.ok)throw new Error('HTTP '+r.status);mBlob=await r.blob()}
+catch(e){err('Cannot load model<br><small>'+e.message+'</small>');throw e}
+const mUrl=URL.createObjectURL(mBlob)
+let obj
+try{obj=await new OBJLoader().loadAsync(mUrl)}
+catch(e){err('Error parsing model<br><small>'+e.message+'</small>');throw e}
+finally{URL.revokeObjectURL(mUrl)}
+
+step('Building scene...')
+obj.traverse(c=>{if(c.isMesh){c.castShadow=true;c.receiveShadow=true}})
+
+/* ── Pivot / centering ──────────────────────────────────────────────────────
+   TURNTABLE ARCHITECTURE:
+   - pivotGroup rotates around Y — the rotation axis is the group's Y axis
+   - We translate the model INSIDE the group so the chosen pivot point
+     sits at the group origin (0,0,0) → that point becomes the spin axis
+   
+   Modes:
+   - 'centered':  spin around BB center
+   - 'manual':    spin around user-defined XYZ (in unscaled model space)
+   - anything else: spin around BB center (safe fallback)
+   ────────────────────────────────────────────────────────────────────────── */
+const pivotGroup=new THREE.Group()
+scene.add(pivotGroup)
+
+const rawBox=new THREE.Box3().setFromObject(obj)
+const bsz=new THREE.Vector3();rawBox.getSize(bsz)
+const bc=new THREE.Vector3();rawBox.getCenter(bc)
+const pivotMode=CFG.model?.pivotMode||'centered'
+const pivotXYZ=CFG.model?.pivotXYZ||null
+
+// Scale to fit viewport
+const mx=Math.max(bsz.x,bsz.y,bsz.z)
+const scale=mx>0?2/mx:1
+obj.scale.setScalar(scale)
+
+// CORRECT PIVOT ARCHITECTURE:
+// pivotGroup stays at world (0,0,0) and rotates
+// An inner group shifts the model so the pivot lands at the pivotGroup origin
+//
+//  pivotGroup (rotation.y=θ, position=0)
+//    └── inner (position = -pivot_in_scaled_space)
+//          └── obj
+
+// For centered: shift so BB center = group origin
+// For manual: shift so user pivot = group origin
+let pivotPt=new THREE.Vector3()
+if(pivotMode==='manual'&&pivotXYZ){
+  pivotPt.set(pivotXYZ[0]*scale, pivotXYZ[1]*scale, pivotXYZ[2]*scale)
+} else {
+  // BB center in scaled space
+  pivotPt.set(bc.x*scale, bc.y*scale, bc.z*scale)
+}
+
+// Inner group: offset model so pivot is at group origin (0,0,0)
+const inner=new THREE.Group()
+inner.position.sub(pivotPt)
+inner.add(obj)
+pivotGroup.add(inner)
+
+// Compute final bounding box for camera placement
+const wBox=new THREE.Box3().setFromObject(pivotGroup)
+const wSphere=new THREE.Sphere();wBox.getBoundingSphere(wSphere)
+const wCenter=wSphere.center.clone()
+const radius=wSphere.radius
+ground.position.y=wBox.min.y-.02
+
+/* ── Camera: fixed orbit, no horizontal rotation (turntable handles that) ── */
+// Camera looks at the visual center of the object
+// Only zoom (distance) and pan (target offset) are interactive
+const CAM={
+  target: wCenter.clone(), // what camera looks at
+  phi: Math.PI/2.5,        // vertical angle (slight elevation)
+  r: 0,                    // orbit distance
+  tR: 0,
+  pX:0, tpX:0,             // pan offsets (world X)
+  pY:0, tpY:0,             // pan offsets (world Y)
+  pZ:0, tpZ:0,             // pan offsets (world Z — flat pan)
+}
+;(()=>{
+  const halfFovV=camera.fov/2*Math.PI/180
+  const halfFovH=Math.atan(Math.tan(halfFovV)*camera.aspect)
+  CAM.r=CAM.tR=radius/Math.sin(Math.min(halfFovV,halfFovH))*1.5
+  // Horizontal front view (ph=PI/2) so model is never cut off
+  CAM.phi=Math.PI/2;CAM.tPhi=Math.PI/2
+})()
+
+// Camera always sits at phi angle, theta=0 (front view), just zooms in/out
+function updateCamera(){
+  CAM.r+=(CAM.tR-CAM.r)*.1
+  CAM.pX+=(CAM.tpX-CAM.pX)*.1;CAM.pY+=(CAM.tpY-CAM.pY)*.1;CAM.pZ+=(CAM.tpZ-CAM.pZ)*.1
+  const x=CAM.r*Math.sin(CAM.phi)*0   // no horizontal rotation on camera
+  const y=CAM.r*Math.cos(CAM.phi)
+  const z=CAM.r*Math.sin(CAM.phi)*1   // camera always at front
+  const lookAt=new THREE.Vector3(CAM.target.x+CAM.pX,CAM.target.y+CAM.pY,CAM.target.z+CAM.pZ)
+  camera.position.set(lookAt.x+x,lookAt.y+y,lookAt.z+z)
+  camera.lookAt(lookAt)
+}
+
+/* ── Pan: flat horizontal/vertical in screen space ── */
+function doPan(dx,dy){
+  const scale=CAM.r*.002
+  // Right vector from camera matrix — flatten to XZ
+  const right=new THREE.Vector3()
+  right.setFromMatrixColumn(camera.matrixWorld,0)
+  right.y=0
+  if(right.lengthSq()>0)right.normalize();else right.set(1,0,0)
+  CAM.tpX-=dx*scale*right.x
+  CAM.tpZ-=dx*scale*right.z
+  CAM.tpY+=dy*scale // vertical drag = pure Y
+}
+
+/* ── Turntable rotation: slider drives pivotGroup.rotation.y ── */
+let _rotY=0  // current rotation in radians
+let _rotTarget=0
+
+/* ── Apply material ── */
+const TX=new THREE.TextureLoader()
+async function loadTex(path){
+  if(!path||path.startsWith('blob:'))return null
+  try{
+    const r=await fetch(path);if(!r.ok)return null
+    const b=await r.blob();const u=URL.createObjectURL(b)
+    const t=await TX.loadAsync(u);URL.revokeObjectURL(u)
+    t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping
+    t.anisotropy=ren.capabilities.getMaxAnisotropy()
+    t.generateMipmaps=true;t.needsUpdate=true
+    return t
+  }catch{return null}
+}
+const mat=CFG.material||{}
+const envMap=scene.environment||null
+
+// Load all textures for a material slot (albedo, opacity, roughness, metallic)
+async function loadSlotTex(slot){
+  if(!slot)return{}
+  const[alb,op,rough,metal]=await Promise.all([
+    loadTex(slot.albedoTexUrl),loadTex(slot.opacityTexUrl),
+    loadTex(slot.roughnessTexUrl),loadTex(slot.metallicTexUrl)
+  ])
+  return{alb,op,rough,metal}
+}
+
+function buildStdMat(slot,tex,env){
+  slot=slot||{}
+  const hasOp=!!tex.op||(slot.opacity??1)<1
+  return new THREE.MeshStandardMaterial({
+    color:new THREE.Color(slot.baseColor||slot.albedoColor||'#888888'),
+    map:tex.alb||null,
+    roughness:Math.max(.03,1-(slot.glossiness??0.55)),
+    roughnessMap:tex.rough||null,
+    metalness:Math.max(0,Math.min(1,slot.metallic??slot.reflection??0)),
+    metalnessMap:tex.metal||null,
+    alphaMap:tex.op||null,
+    opacity:slot.opacity??1,
+    transparent:hasOp,
+    envMap:env,
+    envMapIntensity:(slot.reflection??0)*2+0.3,
+  })
+}
+
+if(mat.mode==='mix'){
+  // Mix Shader = two REAL Standard-shader materials blended per-pixel by an
+  // alpha mask — identical envMap/roughness/metalness pipeline as Standard
+  // mode, rendered as an opaque base mesh + a transparent overlay mesh.
+  const invert=!!mat.invertMask
+  const baseSlot=invert?(mat.matB||{}):(mat.matA||{})
+  const overlaySlot=invert?(mat.matA||{}):(mat.matB||{})
+  const[baseTex,overlayTex,maskTex]=await Promise.all([
+    loadSlotTex(baseSlot),loadSlotTex(overlaySlot),loadTex(mat.maskTextureUrl)
+  ])
+  const baseMat=buildStdMat(baseSlot,baseTex,envMap)
+  const overlayMat=buildStdMat(overlaySlot,overlayTex,envMap)
+  overlayMat.transparent=true
+  overlayMat.depthWrite=false
+  overlayMat.polygonOffset=true
+  overlayMat.polygonOffsetFactor=-1
+  if(maskTex){
+    overlayMat.alphaMap=maskTex
+    overlayMat.opacity=1
+  } else {
+    const mf=mat.mixFactor??.5
+    overlayMat.opacity=invert?(1-mf):mf
+  }
+  obj.traverse(c=>{
+    if(!c.isMesh)return
+    const old=Array.isArray(c.material)?c.material:[c.material];old.forEach(m=>m&&m.dispose())
+    c.material=baseMat
+    const overlay=new THREE.Mesh(c.geometry,overlayMat)
+    overlay.renderOrder=1
+    overlay.castShadow=false;overlay.receiveShadow=false
+    c.add(overlay)
+  })
+}else{
+  const std=mat.standard||mat||{}
+  const t=await loadSlotTex(std)
+  const stdMat=buildStdMat(std,t,envMap)
+  obj.traverse(c=>{
+    if(!c.isMesh)return
+    const old=Array.isArray(c.material)?c.material:[c.material];old.forEach(m=>m&&m.dispose())
+    c.material=stdMat
+  })
+}
+
+/* ── Pan mode ── */
+
+/* ── Pan mode ── */
+let _panMode=false
+window.togglePan=function(){
+  _panMode=!_panMode
+  $('panBtn').classList.toggle('on',_panMode)
+  $('panLbl').textContent=_panMode?'Pan ON':'Pan'
+}
+
+/* ── Canvas: pan only (no orbit on canvas) ── */
+let _cdrag=false,_clx=0,_cly=0
+canvas.addEventListener('mousedown',e=>{
+  if(_panMode){e.preventDefault();_cdrag=true;_clx=e.clientX;_cly=e.clientY}
+},{passive:false})
+window.addEventListener('mousemove',e=>{if(_cdrag){doPan(e.clientX-_clx,e.clientY-_cly);_clx=e.clientX;_cly=e.clientY}})
+window.addEventListener('mouseup',()=>_cdrag=false)
+canvas.addEventListener('wheel',e=>{e.preventDefault();CAM.tR=Math.max(.3,Math.min(60,CAM.tR+e.deltaY*.003*CAM.tR))},{passive:false})
+canvas.addEventListener('contextmenu',e=>e.preventDefault())
+
+/* ── Mobile: pan touch on canvas ── */
+let _ct1x=0,_ct1y=0,_ctouching=false
+canvas.addEventListener('touchstart',e=>{
+  if(_panMode&&e.touches.length===1){e.preventDefault();_ctouching=true;_ct1x=e.touches[0].clientX;_ct1y=e.touches[0].clientY}
+},{passive:false})
+canvas.addEventListener('touchmove',e=>{
+  if(_ctouching&&_panMode&&e.touches.length===1){
+    e.preventDefault()
+    doPan(e.touches[0].clientX-_ct1x,e.touches[0].clientY-_ct1y)
+    _ct1x=e.touches[0].clientX;_ct1y=e.touches[0].clientY
+  }
+},{passive:false})
+canvas.addEventListener('touchend',()=>_ctouching=false,{passive:true})
+
+/* ── Pinch zoom (mobile) ── */
+let _lpd=null
+canvas.addEventListener('touchstart',e=>{
+  if(e.touches.length===2){e.preventDefault();_lpd=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY)}
+},{passive:false})
+canvas.addEventListener('touchmove',e=>{
+  if(e.touches.length>=2){
+    e.preventDefault()
+    const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY)
+    if(_lpd!==null)CAM.tR=Math.max(.3,Math.min(60,CAM.tR*(_lpd/d)))
+    _lpd=d
+  }
+},{passive:false})
+canvas.addEventListener('touchend',e=>{if(e.touches.length<2)_lpd=null},{passive:true})
+
+/* ── Rotation SLIDER ── */
+const orbitTrack=$('orbitTrack'), orbitThumb=$('orbitThumb')
+let _slDrag=false, _slStartX=0, _slStartRot=0
+
+function trackW(){
+  const r=orbitTrack.getBoundingClientRect()
+  return r.width>10?r.width:window.innerWidth*.5
+}
+function updateThumb(){
+  // Map _rotTarget (0 to 2π) to 0-100% of track
+  const norm=((_rotTarget%(Math.PI*2))+Math.PI*2)%(Math.PI*2)
+  const pct=norm/(Math.PI*2)*100
+  orbitThumb.style.left=pct+'%'
+}
+
+// Mouse on slider
+orbitTrack.addEventListener('mousedown',e=>{
+  e.preventDefault();e.stopPropagation()
+  _slDrag=true;_slStartX=e.clientX;_slStartRot=_rotTarget
+},{passive:false})
+window.addEventListener('mousemove',e=>{
+  if(!_slDrag)return
+  // Full track width = one full 360° rotation
+  _rotTarget=_slStartRot-(e.clientX-_slStartX)/trackW()*Math.PI*2
+})
+window.addEventListener('mouseup',()=>_slDrag=false)
+
+// Touch on slider
+let _slTActive=false,_slTStartX=0,_slTStartRot=0
+orbitTrack.addEventListener('touchstart',e=>{
+  e.preventDefault();e.stopPropagation()
+  if(e.touches.length===1){_slTActive=true;_slTStartX=e.touches[0].clientX;_slTStartRot=_rotTarget}
+},{passive:false})
+orbitTrack.addEventListener('touchmove',e=>{
+  e.preventDefault();e.stopPropagation()
+  if(_slTActive&&e.touches.length===1)
+    _rotTarget=_slTStartRot-(e.touches[0].clientX-_slTStartX)/trackW()*Math.PI*2
+},{passive:false})
+orbitTrack.addEventListener('touchend',()=>_slTActive=false,{passive:true})
+
+/* ── Render loop ── */
+function loop(){
+  requestAnimationFrame(loop)
+  // Smooth rotation interpolation
+  _rotY+=(_rotTarget-_rotY)*.1
+  pivotGroup.rotation.y=_rotY
+  updateCamera()
+  updateThumb()
+  ren.render(scene,camera)
+}
+loop()
+setTimeout(()=>ldiv.classList.add('out'),300)
+</script>
+</body>
+</html>

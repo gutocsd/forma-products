@@ -1,0 +1,97 @@
+{
+  "id": "testwed-001",
+  "name": "testwed",
+  "version": "1.0",
+  "publishedAt": "2026-07-15T22:15:31.354Z",
+  "model": {
+    "file": "Sticknovo2.obj",
+    "pivotMode": "manual",
+    "pivotXYZ": [
+      -0.206,
+      1.083,
+      0.658
+    ],
+    "bb": {
+      "center": {
+        "x": -0.41513646773404844,
+        "y": 1.3210671817579431,
+        "z": 0.7322605564131139
+      },
+      "size": {
+        "x": 0.33711283594231345,
+        "y": 2,
+        "z": 0.07769770431870615
+      },
+      "radius": 1.0148499885960323,
+      "minY": 0.321067181757943,
+      "raw": {
+        "w": "0.048",
+        "h": "0.285",
+        "d": "0.011"
+      }
+    }
+  },
+  "material": {
+    "mode": "mix",
+    "mixFactor": 0.42,
+    "maskTextureUrl": "./textures/mask.jpg",
+    "invertMask": false,
+    "standard": {
+      "baseColor": "#8a8a92",
+      "albedoTexUrl": null,
+      "opacity": 1,
+      "opacityTexUrl": null,
+      "metallic": 0,
+      "metallicTexUrl": null,
+      "glossiness": 0.55,
+      "roughnessTexUrl": null,
+      "reflection": 0,
+      "preset": null,
+      "_id": "std"
+    },
+    "matA": {
+      "baseColor": "#d1e3ff",
+      "albedoTexUrl": "./textures/matA_albedo.jpg",
+      "opacity": 1,
+      "opacityTexUrl": null,
+      "metallic": 0,
+      "metallicTexUrl": null,
+      "glossiness": 0.85,
+      "roughnessTexUrl": null,
+      "reflection": 0.16,
+      "preset": null,
+      "_id": "matA"
+    },
+    "matB": {
+      "baseColor": "#b8b8c0",
+      "albedoTexUrl": null,
+      "opacity": 1,
+      "opacityTexUrl": null,
+      "metallic": 1,
+      "metallicTexUrl": null,
+      "glossiness": 0.94,
+      "roughnessTexUrl": null,
+      "reflection": 0.85,
+      "preset": "metal",
+      "_id": "matB"
+    }
+  },
+  "lighting": {
+    "mode": "hdri",
+    "hdriUrl": "./textures/env.exr",
+    "hdriFileName": "potsdamer_platz_2k.exr",
+    "hdriIntensity": 3.8,
+    "intensity": 5,
+    "azimuth": 45,
+    "elevation": 35,
+    "shadowOpacity": 0.19
+  },
+  "background": {
+    "mode": "solid",
+    "solidColor": "#0e0e14",
+    "gradientPreset": -1,
+    "gradientStart": "#0f0c29",
+    "gradientEnd": "#24243e",
+    "gradientAngle": 135
+  }
+}

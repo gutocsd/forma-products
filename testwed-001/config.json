@@ -2,7 +2,7 @@
   "id": "testwed-001",
   "name": "testwed",
   "version": "1.0",
-  "publishedAt": "2026-07-16T21:26:49.257Z",
+  "publishedAt": "2026-07-16T21:39:39.457Z",
   "model": {
     "file": "Sticknovo2.obj",
     "pivotMode": "manual",
@@ -87,11 +87,11 @@
     "shadowOpacity": 0.19
   },
   "background": {
-    "mode": "solid",
+    "mode": "gradient",
     "solidColor": "#0e0e14",
     "gradientPreset": -1,
-    "gradientStart": "#0f0c29",
-    "gradientEnd": "#24243e",
+    "gradientStart": "#000000",
+    "gradientEnd": "#9393cc",
     "gradientAngle": 135
   }
 }

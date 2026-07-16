@@ -104,12 +104,39 @@ const $=id=>document.getElementById(id)
 const ldiv=$('ld'), ltxt=$('ltxt')
 function err(m){ldiv.innerHTML=`<div class="lerr">${m}</div>`}
 function step(m){ltxt.textContent=m}
+// Race any promise against a timeout so a silently-hanging load (corrupt
+// texture, stalled network, malformed image data that never fires load/error)
+// fails LOUDLY instead of leaving the loading screen spinning forever.
+function withTimeout(promise,ms,label){
+  return new Promise((resolve,reject)=>{
+    const t=setTimeout(()=>reject(new Error((label||'Operation')+' timed out after '+(ms/1000)+'s')),ms)
+    promise.then(v=>{clearTimeout(t);resolve(v)},e=>{clearTimeout(t);reject(e)})
+  })
+}
+// Global safety net: if loading is still stuck after 45s for ANY reason not
+// covered by the timeouts above, show an error instead of spinning forever
+const _watchdog=setTimeout(()=>{
+  if(!ldiv.classList.contains('out')){
+    err('Loading timed out.<br><small>Something is taking too long — check your internet connection or try re-publishing this product.</small>')
+  }
+},45000)
+window.addEventListener('error',e=>{
+  if(!ldiv.classList.contains('out')){
+    err('Unexpected error<br><small>'+(e.message||'Unknown error')+'</small>')
+  }
+})
+window.addEventListener('unhandledrejection',e=>{
+  if(!ldiv.classList.contains('out')){
+    err('Unexpected error<br><small>'+(e.reason?.message||e.reason||'Unknown error')+'</small>')
+  }
+})
 
 /* ── Load config ── */
 step('Reading config...')
 let CFG
 try{
-  const r=await fetch('./config.json');if(!r.ok)throw new Error('HTTP '+r.status)
+  const r=await withTimeout(fetch('./config.json'),15000,'config.json fetch')
+  if(!r.ok)throw new Error('HTTP '+r.status)
   CFG=await r.json()
 }catch(e){err('Cannot load config.json<br><small>'+e.message+'</small>');throw e}
 
@@ -171,7 +198,7 @@ async function applyLighting(l){
   if(l.mode==='hdri'&&l.hdriUrl){
     try{
       const{RGBELoader}=await import('three/addons/loaders/RGBELoader.js')
-      const tex=await new RGBELoader().loadAsync(l.hdriUrl)
+      const tex=await withTimeout(new RGBELoader().loadAsync(l.hdriUrl),20000,'HDRI load')
       const pmrem=new THREE.PMREMGenerator(ren);pmrem.compileEquirectangularShader()
       const envMap=pmrem.fromEquirectangular(tex).texture
       scene.environment=envMap;pmrem.dispose()
@@ -200,11 +227,14 @@ await applyLighting(CFG.lighting)
 step('Loading model...')
 const modelFile=CFG.model?.file||'model.obj'
 let mBlob
-try{const r=await fetch('./'+modelFile);if(!r.ok)throw new Error('HTTP '+r.status);mBlob=await r.blob()}
-catch(e){err('Cannot load model<br><small>'+e.message+'</small>');throw e}
+try{
+  const r=await withTimeout(fetch('./'+modelFile),20000,'Model fetch')
+  if(!r.ok)throw new Error('HTTP '+r.status)
+  mBlob=await r.blob()
+}catch(e){err('Cannot load model<br><small>'+e.message+'</small>');throw e}
 const mUrl=URL.createObjectURL(mBlob)
 let obj
-try{obj=await new OBJLoader().loadAsync(mUrl)}
+try{obj=await withTimeout(new OBJLoader().loadAsync(mUrl),20000,'Model parse')}
 catch(e){err('Error parsing model<br><small>'+e.message+'</small>');throw e}
 finally{URL.revokeObjectURL(mUrl)}
 
@@ -322,14 +352,18 @@ const TX=new THREE.TextureLoader()
 async function loadTex(path){
   if(!path||path.startsWith('blob:'))return null
   try{
-    const r=await fetch(path);if(!r.ok)return null
+    const r=await withTimeout(fetch(path),15000,'Texture fetch')
+    if(!r.ok)return null
     const b=await r.blob();const u=URL.createObjectURL(b)
-    const t=await TX.loadAsync(u);URL.revokeObjectURL(u)
+    let t
+    try{
+      t=await withTimeout(TX.loadAsync(u),15000,'Texture decode')
+    }finally{URL.revokeObjectURL(u)}
     t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping
     t.anisotropy=ren.capabilities.getMaxAnisotropy()
     t.generateMipmaps=true;t.needsUpdate=true
     return t
-  }catch{return null}
+  }catch(e){console.warn('Texture load failed/timed out:',path,e);return null}
 }
 const mat=CFG.material||{}
 const envMap=scene.environment||null
@@ -503,6 +537,7 @@ function loop(){
   ren.render(scene,camera)
 }
 loop()
+clearTimeout(_watchdog)
 setTimeout(()=>ldiv.classList.add('out'),300)
 }catch(sceneErr){
   console.error('Scene build error:',sceneErr)

@@ -36,18 +36,6 @@ canvas{display:block;position:absolute;inset:0;width:100%!important;height:100%!
   padding:14px 24px 20px;
   display:flex;flex-direction:column;align-items:center;gap:10px;
 }
-/* Pan button */
-.top-row{width:100%;display:flex;align-items:center;justify-content:space-between}
-.pan-btn{
-  display:flex;align-items:center;gap:6px;padding:7px 14px;
-  border-radius:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.13);
-  color:#dcdcee;font-size:12px;font-weight:600;letter-spacing:.04em;
-  cursor:pointer;transition:all .2s;font-family:inherit;
-  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
-}
-.pan-btn:active{transform:scale(.95)}
-.pan-btn.on{background:rgba(124,106,255,.35);border-color:rgba(124,106,255,.65);color:#e0d9ff}
-.pan-btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .zoom-hint{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#b8b8d2}
 /* Slider */
 .slider-wrap{
@@ -80,19 +68,13 @@ canvas{display:block;position:absolute;inset:0;width:100%!important;height:100%!
 </div>
 
 <div class="ctrl-bar">
-  <div class="top-row">
-    <button class="pan-btn" id="panBtn" onclick="togglePan()">
-      <svg viewBox="0 0 24 24"><path d="M9 3v9M6 6V5a3 3 0 0 1 6 0v4"/><path d="M12 5a3 3 0 0 1 6 0v7a6 6 0 0 1-12 0V9a3 3 0 0 1 3-3"/></svg>
-      <span id="panLbl">Pan</span>
-    </button>
-    <div class="zoom-hint">Scroll to zoom</div>
-  </div>
+  <div class="zoom-hint">Drag object to pan &middot; Scroll to zoom</div>
   <div class="slider-wrap">
     <div class="orbit-track" id="orbitTrack">
       <div class="orbit-rail"></div>
       <div class="orbit-thumb" id="orbitThumb" style="left:0%"></div>
     </div>
-    <div class="orbit-label">← Drag to rotate 360°</div>
+    <div class="orbit-label">← Drag slider to rotate 360°</div>
   </div>
 </div>
 
@@ -124,18 +106,11 @@ const _watchdog=setTimeout(()=>{
   }
 },45000)
 let _loaded=false
-window.addEventListener('error',e=>{
-  if(_loaded)return  // scene already built successfully — don't alarm over background errors
-  if(!ldiv.classList.contains('out')){
-    err('Unexpected error<br><small>'+(e.message||'Unknown error')+'</small>')
-  }
-})
-window.addEventListener('unhandledrejection',e=>{
-  if(_loaded)return
-  if(!ldiv.classList.contains('out')){
-    err('Unexpected error<br><small>'+(e.reason?.message||e.reason||'Unknown error')+'</small>')
-  }
-})
+// Background errors (e.g. texture decode hiccups that Three.js recovers from)
+// are logged but never block the UI — only OUR explicit try/catches
+// (config/model/scene-build below) show the blocking error screen.
+window.addEventListener('error',e=>console.warn('Background error (non-blocking):',e.message))
+window.addEventListener('unhandledrejection',e=>console.warn('Background rejection (non-blocking):',e.reason))
 
 /* ── Load config ── */
 step('Reading config...')
@@ -338,10 +313,11 @@ function updateCamera(){
   camera.lookAt(lookAt)
 }
 
-/* ── Pan: flat horizontal/vertical in screen space ── */
+/* ── Pan: pixel-accurate flat horizontal/vertical in screen space ── */
 function doPan(dx,dy){
-  const scale=CAM.r*.002
-  // Right vector from camera matrix — flatten to XZ
+  const halfH=canvas.clientHeight/2||300
+  const halfFov=camera.fov/2*Math.PI/180
+  const scale=Math.tan(halfFov)*CAM.r/halfH
   const right=new THREE.Vector3()
   right.setFromMatrixColumn(camera.matrixWorld,0)
   right.y=0
@@ -451,31 +427,24 @@ if(mat.mode==='mix'){
   })
 }
 
-/* ── Pan mode ── */
-let _panMode=false
-window.togglePan=function(){
-  _panMode=!_panMode
-  $('panBtn').classList.toggle('on',_panMode)
-  $('panLbl').textContent=_panMode?'Pan ON':'Pan'
-}
-
-/* ── Canvas: pan only (no orbit on canvas) ── */
+/* ── Pan: automatic on drag — no mode toggle needed ── */
 let _cdrag=false,_clx=0,_cly=0
 canvas.addEventListener('mousedown',e=>{
-  if(_panMode){e.preventDefault();_cdrag=true;_clx=e.clientX;_cly=e.clientY}
+  if(e.button!==0)return
+  e.preventDefault();_cdrag=true;_clx=e.clientX;_cly=e.clientY
 },{passive:false})
 window.addEventListener('mousemove',e=>{if(_cdrag){doPan(e.clientX-_clx,e.clientY-_cly);_clx=e.clientX;_cly=e.clientY}})
 window.addEventListener('mouseup',()=>_cdrag=false)
 canvas.addEventListener('wheel',e=>{e.preventDefault();CAM.tR=Math.max(.3,Math.min(60,CAM.tR+e.deltaY*.003*CAM.tR))},{passive:false})
 canvas.addEventListener('contextmenu',e=>e.preventDefault())
 
-/* ── Mobile: pan touch on canvas ── */
+/* ── Mobile: one-finger drag = pan automatically ── */
 let _ct1x=0,_ct1y=0,_ctouching=false
 canvas.addEventListener('touchstart',e=>{
-  if(_panMode&&e.touches.length===1){e.preventDefault();_ctouching=true;_ct1x=e.touches[0].clientX;_ct1y=e.touches[0].clientY}
+  if(e.touches.length===1){e.preventDefault();_ctouching=true;_ct1x=e.touches[0].clientX;_ct1y=e.touches[0].clientY}
 },{passive:false})
 canvas.addEventListener('touchmove',e=>{
-  if(_ctouching&&_panMode&&e.touches.length===1){
+  if(_ctouching&&e.touches.length===1){
     e.preventDefault()
     doPan(e.touches[0].clientX-_ct1x,e.touches[0].clientY-_ct1y)
     _ct1x=e.touches[0].clientX;_ct1y=e.touches[0].clientY

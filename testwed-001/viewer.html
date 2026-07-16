@@ -420,10 +420,14 @@ if(mat.mode==='mix'){
     overlayMat.opacity=invert?(1-mf):mf
   }
   obj.traverse(c=>{
-    if(!c.isMesh)return
+    // Guard against infinite recursion: traverse() visits children added
+    // DURING iteration, and overlay is itself a Mesh — without this check
+    // each overlay would spawn another overlay forever (stack overflow)
+    if(!c.isMesh||c.userData.isMixOverlay)return
     const old=Array.isArray(c.material)?c.material:[c.material];old.forEach(m=>m&&m.dispose())
     c.material=baseMat
     const overlay=new THREE.Mesh(c.geometry,overlayMat)
+    overlay.userData.isMixOverlay=true
     overlay.renderOrder=1
     overlay.castShadow=false;overlay.receiveShadow=false
     c.add(overlay)

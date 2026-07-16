@@ -209,6 +209,7 @@ catch(e){err('Error parsing model<br><small>'+e.message+'</small>');throw e}
 finally{URL.revokeObjectURL(mUrl)}
 
 step('Building scene...')
+try{
 obj.traverse(c=>{if(c.isMesh){c.castShadow=true;c.receiveShadow=true}})
 
 /* ── Pivot / centering ──────────────────────────────────────────────────────
@@ -405,8 +406,6 @@ if(mat.mode==='mix'){
 }
 
 /* ── Pan mode ── */
-
-/* ── Pan mode ── */
 let _panMode=false
 window.togglePan=function(){
   _panMode=!_panMode
@@ -505,6 +504,10 @@ function loop(){
 }
 loop()
 setTimeout(()=>ldiv.classList.add('out'),300)
+}catch(sceneErr){
+  console.error('Scene build error:',sceneErr)
+  err('Error building scene<br><small>'+(sceneErr?.message||sceneErr)+'</small>')
+}
 </script>
 </body>
 </html>

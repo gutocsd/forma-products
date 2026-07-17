@@ -467,43 +467,51 @@ canvas.addEventListener('touchmove',e=>{
 },{passive:false})
 canvas.addEventListener('touchend',e=>{if(e.touches.length<2)_lpd=null},{passive:true})
 
-/* ── Rotation SLIDER ── */
+/* ── Rotation SLIDER — linear, no wrap, drag direction matches cursor ── */
 const orbitTrack=$('orbitTrack'), orbitThumb=$('orbitThumb')
-let _slDrag=false, _slStartX=0, _slStartRot=0
 
 function trackW(){
   const r=orbitTrack.getBoundingClientRect()
   return r.width>10?r.width:window.innerWidth*.5
 }
+function trackPct(clientX){
+  const rect=orbitTrack.getBoundingClientRect()
+  return Math.max(0,Math.min(1,(clientX-rect.left)/rect.width))
+}
 function updateThumb(){
-  // Map _rotTarget (0 to 2π) to 0-100% of track
-  const norm=((_rotTarget%(Math.PI*2))+Math.PI*2)%(Math.PI*2)
-  const pct=norm/(Math.PI*2)*100
-  orbitThumb.style.left=pct+'%'
+  // Linear 0..2π maps directly to 0%..100% — clamped, never wraps
+  const clamped=Math.max(0,Math.min(Math.PI*2,_rotTarget))
+  orbitThumb.style.left=(clamped/(Math.PI*2)*100)+'%'
 }
 
-// Mouse on slider
+// Mouse: click jumps to position, drag right = value increases (matches cursor)
+let _slDrag=false,_slStartX=0,_slStartRot=0
 orbitTrack.addEventListener('mousedown',e=>{
   e.preventDefault();e.stopPropagation()
-  _slDrag=true;_slStartX=e.clientX;_slStartRot=_rotTarget
+  _slDrag=true
+  _rotTarget=trackPct(e.clientX)*Math.PI*2
+  _slStartX=e.clientX;_slStartRot=_rotTarget
 },{passive:false})
 window.addEventListener('mousemove',e=>{
   if(!_slDrag)return
-  // Full track width = one full 360° rotation
-  _rotTarget=_slStartRot-(e.clientX-_slStartX)/trackW()*Math.PI*2
+  _rotTarget=Math.max(0,Math.min(Math.PI*2,_slStartRot+(e.clientX-_slStartX)/trackW()*Math.PI*2))
 })
 window.addEventListener('mouseup',()=>_slDrag=false)
 
-// Touch on slider
+// Touch: same logic
 let _slTActive=false,_slTStartX=0,_slTStartRot=0
 orbitTrack.addEventListener('touchstart',e=>{
   e.preventDefault();e.stopPropagation()
-  if(e.touches.length===1){_slTActive=true;_slTStartX=e.touches[0].clientX;_slTStartRot=_rotTarget}
+  if(e.touches.length===1){
+    _slTActive=true
+    _rotTarget=trackPct(e.touches[0].clientX)*Math.PI*2
+    _slTStartX=e.touches[0].clientX;_slTStartRot=_rotTarget
+  }
 },{passive:false})
 orbitTrack.addEventListener('touchmove',e=>{
   e.preventDefault();e.stopPropagation()
   if(_slTActive&&e.touches.length===1)
-    _rotTarget=_slTStartRot-(e.touches[0].clientX-_slTStartX)/trackW()*Math.PI*2
+    _rotTarget=Math.max(0,Math.min(Math.PI*2,_slTStartRot+(e.touches[0].clientX-_slTStartX)/trackW()*Math.PI*2))
 },{passive:false})
 orbitTrack.addEventListener('touchend',()=>_slTActive=false,{passive:true})
 

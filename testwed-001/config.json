@@ -2,14 +2,14 @@
   "id": "testwed-001",
   "name": "testwed",
   "version": "1.0",
-  "publishedAt": "2026-07-17T18:38:46.034Z",
+  "publishedAt": "2026-07-17T22:59:24.847Z",
   "model": {
     "file": "Sticknovo2.obj",
     "pivotMode": "manual",
     "pivotXYZ": [
-      -0.261,
-      1.314,
-      0.757
+      -0.263,
+      1.321,
+      0.76
     ],
     "bb": {
       "center": {
@@ -50,28 +50,28 @@
       "_id": "std"
     },
     "matA": {
-      "baseColor": "#d1e3ff",
+      "baseColor": "#ffffff",
       "albedoTexUrl": "./textures/matA_albedo.jpg",
       "opacity": 1,
       "opacityTexUrl": null,
       "metallic": 0,
       "metallicTexUrl": null,
-      "glossiness": 0.85,
+      "glossiness": 0.57,
       "roughnessTexUrl": null,
-      "reflection": 0.16,
+      "reflection": 0.09,
       "preset": null,
       "_id": "matA"
     },
     "matB": {
-      "baseColor": "#b8b8c0",
+      "baseColor": "#cccccc",
       "albedoTexUrl": null,
       "opacity": 1,
       "opacityTexUrl": null,
-      "metallic": 1,
+      "metallic": 0.96,
       "metallicTexUrl": null,
-      "glossiness": 0.94,
+      "glossiness": 1,
       "roughnessTexUrl": null,
-      "reflection": 0.85,
+      "reflection": 0.97,
       "preset": "metal",
       "_id": "matB"
     }
@@ -79,8 +79,8 @@
   "lighting": {
     "mode": "hdri",
     "hdriUrl": "./textures/env.exr",
-    "hdriFileName": "potsdamer_platz_2k.exr",
-    "hdriIntensity": 3.8,
+    "hdriFileName": "studio_small_08_1k.exr",
+    "hdriIntensity": 2.45,
     "intensity": 5,
     "azimuth": 45,
     "elevation": 35,

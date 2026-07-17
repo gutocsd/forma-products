@@ -277,8 +277,25 @@ pivotGroup.add(inner)
 // Compute final bounding box for camera placement
 const wBox=new THREE.Box3().setFromObject(pivotGroup)
 const wSphere=new THREE.Sphere();wBox.getBoundingSphere(wSphere)
-const wCenter=wSphere.center.clone()
-const radius=wSphere.radius
+// Camera targets the MANUALLY SET PIVOT (not the bounding box/sphere center)
+// when one is defined — by construction the pivot always maps to world
+// (0,0,0), since pivotGroup itself never moves, only rotates.
+let wCenter,radius
+if(pivotMode==='manual'&&pivotXYZ){
+  wCenter=new THREE.Vector3(0,0,0)
+  radius=Math.max(.1,
+    wBox.min.distanceTo(wCenter),wBox.max.distanceTo(wCenter),
+    new THREE.Vector3(wBox.min.x,wBox.min.y,wBox.max.z).distanceTo(wCenter),
+    new THREE.Vector3(wBox.min.x,wBox.max.y,wBox.min.z).distanceTo(wCenter),
+    new THREE.Vector3(wBox.min.x,wBox.max.y,wBox.max.z).distanceTo(wCenter),
+    new THREE.Vector3(wBox.max.x,wBox.min.y,wBox.min.z).distanceTo(wCenter),
+    new THREE.Vector3(wBox.max.x,wBox.min.y,wBox.max.z).distanceTo(wCenter),
+    new THREE.Vector3(wBox.max.x,wBox.max.y,wBox.min.z).distanceTo(wCenter),
+  )
+} else {
+  wCenter=wSphere.center.clone()
+  radius=wSphere.radius
+}
 ground.position.y=wBox.min.y-.02
 
 /* ── Camera: fixed orbit, no horizontal rotation (turntable handles that) ── */

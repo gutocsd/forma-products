@@ -2,14 +2,14 @@
   "id": "testwed-001",
   "name": "testwed",
   "version": "1.0",
-  "publishedAt": "2026-07-16T21:58:33.662Z",
+  "publishedAt": "2026-07-17T18:38:46.034Z",
   "model": {
     "file": "Sticknovo2.obj",
     "pivotMode": "manual",
     "pivotXYZ": [
-      -0.206,
-      1.083,
-      0.658
+      -0.261,
+      1.314,
+      0.757
     ],
     "bb": {
       "center": {

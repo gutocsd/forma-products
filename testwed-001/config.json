@@ -2,7 +2,7 @@
   "id": "testwed-001",
   "name": "testwed",
   "version": "1.0",
-  "publishedAt": "2026-07-23T07:40:27.079Z",
+  "publishedAt": "2026-07-24T08:28:07.315Z",
   "model": {
     "file": "Sticknovo2.obj",
     "pivotMode": "manual",
@@ -54,45 +54,54 @@
       "albedoTexUrl": "./textures/matA_albedo.jpg",
       "opacity": 1,
       "opacityTexUrl": null,
-      "metallic": 0,
+      "metallic": 0.07,
       "metallicTexUrl": null,
-      "glossiness": 0.57,
+      "glossiness": 0.78,
       "roughnessTexUrl": null,
-      "reflection": 0.09,
+      "reflection": 0.64,
       "preset": null,
       "_id": "matA"
     },
     "matB": {
-      "baseColor": "#cccccc",
+      "baseColor": "#4b86aa",
       "albedoTexUrl": null,
       "opacity": 1,
       "opacityTexUrl": null,
-      "metallic": 0.96,
+      "metallic": 0.92,
       "metallicTexUrl": null,
-      "glossiness": 1,
+      "glossiness": 0.92,
       "roughnessTexUrl": null,
-      "reflection": 0.97,
+      "reflection": 0.94,
       "preset": "metal",
       "_id": "matB"
     }
   },
   "lighting": {
     "mode": "hdri",
-    "hdriUrl": "./textures/env.exr",
-    "hdriFileName": "studio_small_03_2k.exr",
-    "hdriIntensity": 0.95,
-    "intensity": 5.6,
-    "azimuth": 177,
-    "elevation": 35,
-    "shadowOpacity": 0.19
+    "hdriUrl": "./textures/env.hdr",
+    "hdriFileName": "brown_photostudio_02_1k.hdr",
+    "hdriIntensity": 1.05,
+    "intensity": 4.1,
+    "azimuth": 351,
+    "elevation": 34,
+    "shadowOpacity": 0.4,
+    "hdriRotation": 4.694935687864747,
+    "hdriPreset": -1
   },
   "background": {
     "mode": "gradient",
     "solidColor": "#0f1117",
     "gradientPreset": -1,
     "gradientStart": "#000000",
-    "gradientEnd": "#626e7f",
+    "gradientEnd": "#2c343f",
     "gradientAngle": 275
   },
-  "navMode": "standard"
+  "navMode": "freeOrbit",
+  "freeOrbit": {
+    "zoomSpeed": 2.3,
+    "zoomMinMult": 0.05,
+    "zoomMaxMult": 1.5,
+    "panSpeed": 0.1,
+    "panLimitMult": 6
+  }
 }
